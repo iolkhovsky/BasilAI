@@ -1,2 +1,2 @@
 from datasets.tokenizer import SpecToken, Tokenizer
-from datasets.dataset import *
+from datasets.dataset import ChatDataset

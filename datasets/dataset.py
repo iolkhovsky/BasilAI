@@ -18,17 +18,17 @@ class ChatDataset(Dataset):
         self._df = pd.read_csv(path)
        
         if fit_tokenizer:
-            self.tokenizer.fit(self._df['answers'] + self._df['questions'])
+            self.tokenizer.fit(list(self._df['answer'] + self._df['question']))
 
     def __len__(self):
         return len(self._df)
 
     def __getitem__(self, index):       
-        in_sentence = self._df['questions'][index]
+        in_sentence = self._df['question'][index]
         encoder_input = self.tokenizer.encode_line(in_sentence)[:self._max_words]
         encoder_input = pad(encoder_input, self.tokenizer, self._max_words, prepadding=True)
 
-        target_sentence = self._df['answers'][index]
+        target_sentence = self._df['answer'][index]
         decoder_output = self.tokenizer.encode_line(target_sentence) + [self.tokenizer.stop_token]
         decoder_output = decoder_output[:self._max_words]
         decoder_input = [self.tokenizer.start_token] + decoder_output

@@ -1,6 +1,7 @@
 RAW_DATA := 'data/chat.json'
 TARGET := 'target_id'
 DATASET := 'data/dataset.csv'
+TRAIN_CONFIG := 'config/train.yaml'
 
 install: FORCE
 	python3 -m venv venv
@@ -13,4 +14,9 @@ dataset: FORCE
 		--path=${RAW_DATA} \
 		--target-id=${TARGET} \
 		--output=${DATASET}
+FORCE:
+
+train: FORCE
+	python3 train.py \
+		--config=${TRAIN_CONFIG}
 FORCE:

@@ -1,0 +1,24 @@
+device: cpu
+epochs: 1
+iterations: 0
+logs: logs
+checkpoints: checkpoints
+validation_steps: 50
+autosave_mins: 1
+model:
+  class: BasicLstmChatter
+  parameters:
+    max_length: 60
+    num_embeddings: 10000
+optimizer:
+  type: Adam
+  parameters:
+    lr: 0.0001
+dataset:
+  val_share: 0.1
+  train_batch: 32
+  val_batch: 16
+  class: ChatDataset
+  parameters:
+    path: data/dataset.csv
+    max_words: 60

@@ -6,10 +6,10 @@ from datasets import SpecToken
 
 
 class BasicLstmChatter(nn.Module):
-    def __init__(self, max_length=60, start_token=SpecToken.START, stop_token=SpecToken.STOP):
+    def __init__(self, max_length=60, num_embeddings=10000, start_token=SpecToken.START, stop_token=SpecToken.STOP):
         super(BasicLstmChatter, self).__init__()
-        self._encoder = Encoder()
-        self._decoder = Decoder()
+        self._encoder = Encoder(num_embeddings=num_embeddings)
+        self._decoder = Decoder(num_embeddings=num_embeddings)
         self._loss = nn.CrossEntropyLoss()
         self._start_token = torch.tensor(int(start_token)).long()
         self._stop_token = torch.tensor(int(stop_token)).long()

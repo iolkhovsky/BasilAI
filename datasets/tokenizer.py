@@ -21,6 +21,7 @@ class Tokenizer:
         self._max_words = max_words
 
     def encode(self, word):
+        word = self.preprocessor(word)
         if word in self._word2id:
             return self._word2id[word]
         else:

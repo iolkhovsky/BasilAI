@@ -21,7 +21,8 @@ class ChatDataset(Dataset):
             self._df = self._df.head(limit)
        
         if fit_tokenizer:
-            self.tokenizer.fit(list(self._df['answer'] + self._df['question']))
+            all_sentences = list(self._df['answer']) + list(self._df['question'])
+            self.tokenizer.fit(all_sentences)
 
     def __len__(self):
         return len(self._df)

@@ -7,11 +7,15 @@ from datasets import Tokenizer
 
 
 def build_dataloaders(config):
+    tokenizer_config = config['tokenizer']
+    tokenizer_path = tokenizer_config['path']
+    max_words = tokenizer_config['max_words']
     fit_tokenizer = True
-    tokenizer = Tokenizer()
-    if os.path.exists(config['tokenizer']):
-        tokenizer = Tokenizer.load(config['tokenizer'])
+    tokenizer = Tokenizer(max_words=max_words)
+    if os.path.exists(tokenizer_path):
+        tokenizer = Tokenizer.load(tokenizer_path)
         fit_tokenizer = False
+        print(f'Loaded tokenizer (size={len(tokenizer)}) from {tokenizer_path}')
 
     dataset_class = getattr(datasets, config['class'])
     pars = config['parameters']

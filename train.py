@@ -149,6 +149,8 @@ def run(args):
 
     train_dataloader, val_dataloader, tokenizer = \
         build_dataloaders(training_config['dataset'])
+    print(f'Train dataset size: {len(train_dataloader)}')
+    print(f'Val dataset size: {len(val_dataloader)}')
 
     train(
         device=device,

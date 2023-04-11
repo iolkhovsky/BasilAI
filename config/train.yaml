@@ -12,11 +12,11 @@ model:
     max_length: 60
     num_embeddings: 10000
     layers: 2
-    do: 0.5
+    do: 0.1
 optimizer:
   type: Adam
   parameters:
-    lr: 0.0001
+    lr: 0.001
 dataset:
   tokenizer:
     path: ""
@@ -27,4 +27,5 @@ dataset:
   class: ChatDataset
   parameters:
     path: data/dataset.csv
-    max_words: 60
+    max_words: 20
+    limit: 0

@@ -12,10 +12,13 @@ class ChatDataset(Dataset):
         tokenizer,
         fit_tokenizer=False,
         max_words=60,
+        limit=None
     ):
         self.tokenizer = tokenizer
         self._max_words = max_words
         self._df = pd.read_csv(path)
+        if limit:
+            self._df = self._df.head(limit)
        
         if fit_tokenizer:
             self.tokenizer.fit(list(self._df['answer'] + self._df['question']))

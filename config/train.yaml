@@ -11,6 +11,8 @@ model:
   parameters:
     max_length: 60
     num_embeddings: 10000
+    layers: 2
+    do: 0.5
 optimizer:
   type: Adam
   parameters:

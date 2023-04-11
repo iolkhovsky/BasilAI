@@ -2,33 +2,25 @@ import torch.nn as nn
 
 
 class Encoder(nn.Module):
-    def __init__(self, num_embeddings=10000, hidden_size=256, embedding_dim=128):
+    def __init__(self, num_embeddings=10000, hidden_size=256, embedding_dim=128, layers=2, do=0.5):
         super(Encoder, self).__init__()
         self.embedding = nn.Embedding(
             num_embeddings=num_embeddings,
             embedding_dim=embedding_dim,
             max_norm=True
         )
-        self._enc_lstm_0 = nn.LSTM(
+        self._enc_lstm = nn.LSTM(
             input_size=embedding_dim,
             hidden_size=hidden_size,
             batch_first=True,
-            dropout=0.,
-        )
-        self._enc_lstm_1 = nn.LSTM(
-            input_size=hidden_size,
-            hidden_size=hidden_size,
-            batch_first=True,
-            dropout=0.,
+            dropout=do,
+            num_layers=layers,
         )
 
     def forward(self, tokens):
         embedded = self.embedding(tokens)
-        enc0_out, (enc0_h, enc0_c) = self._enc_lstm_0(embedded)
-        _, (enc1_h, enc1_c) = self._enc_lstm_1(enc0_out)
+        _, (enc_h, enc_c) = self._enc_lstm(embedded)
         return {
-            'enc0_h': enc0_h,
-            'enc0_c': enc0_c,
-            'enc1_h': enc1_h,
-            'enc1_c': enc1_c,
+            'hidden': enc_h,
+            'context': enc_c,
         }

@@ -6,7 +6,7 @@ from datasets import SpecToken
 
 
 class BasicLstmChatter(nn.Module):
-    def __init__(self, max_length=60, num_embeddings=10000,
+    def __init__(self, max_length=60, num_embeddings=10000, layers=2, do=0.5,
                  start_token=SpecToken.START, stop_token=SpecToken.STOP):
         super(BasicLstmChatter, self).__init__()
         self._encoder = Encoder(num_embeddings=num_embeddings)

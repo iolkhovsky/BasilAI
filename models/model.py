@@ -6,7 +6,8 @@ from datasets import SpecToken
 
 
 class BasicLstmChatter(nn.Module):
-    def __init__(self, max_length=60, num_embeddings=10000, start_token=SpecToken.START, stop_token=SpecToken.STOP):
+    def __init__(self, max_length=60, num_embeddings=10000,
+                 start_token=SpecToken.START, stop_token=SpecToken.STOP):
         super(BasicLstmChatter, self).__init__()
         self._encoder = Encoder(num_embeddings=num_embeddings)
         self._decoder = Decoder(num_embeddings=num_embeddings)
@@ -26,7 +27,9 @@ class BasicLstmChatter(nn.Module):
                 scores_reshaped,
                 targets_reshaped,
             )
-            return loss
+            predictions = torch.reshape(torch.argmax(scores_reshaped, dim=-1), [b * n]).long()
+            accuracy = torch.mean(torch.eq(predictions, targets_reshaped).float())
+            return loss, accuracy
         else:
             b, n = tokens.shape
             assert b == 1, f"Inference is now available only for batch size 1"
@@ -59,3 +62,16 @@ class BasicLstmChatter(nn.Module):
         model.load_state_dict(torch.load(path, map_location=device))
         model.eval()
         return model
+    
+    @property
+    def device(self):
+        return next(self.parameters()).device
+
+    def infer(self, text_or_tokens, tokenizer):
+        if isinstance(text_or_tokens, str):
+            text_or_tokens = tokenizer.encode_line(text_or_tokens)
+        input_tokens = torch.Tensor(text_or_tokens).long().unsqueeze(0).to(self.device)
+        self.eval()
+        prediction_tokens = self.forward(input_tokens)
+        output_text = tokenizer.decode_line(prediction_tokens)
+        return output_text.replace('PAD', ' ')

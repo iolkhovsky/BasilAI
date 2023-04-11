@@ -16,6 +16,7 @@ optimizer:
   parameters:
     lr: 0.0001
 dataset:
+  tokenizer: ""
   val_share: 0.1
   train_batch: 32
   val_batch: 16

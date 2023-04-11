@@ -1,3 +1,4 @@
+import os
 import torch
 from torch.utils.data import DataLoader
 
@@ -6,12 +7,16 @@ from datasets import Tokenizer
 
 
 def build_dataloaders(config):
+    fit_tokenizer = True
     tokenizer = Tokenizer()
+    if os.path.exists(config['tokenizer']):
+        tokenizer = Tokenizer.load(config['tokenizer'])
+        fit_tokenizer = False
 
     dataset_class = getattr(datasets, config['class'])
     pars = config['parameters']
     pars['tokenizer'] = tokenizer
-    pars['fit_tokenizer'] = True
+    pars['fit_tokenizer'] = fit_tokenizer
 
     dataset = dataset_class(**pars)
 

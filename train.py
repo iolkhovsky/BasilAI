@@ -9,7 +9,7 @@ from tqdm import tqdm
 from torch.utils.tensorboard import SummaryWriter
 
 from utils import read_yaml, get_available_device
-from models import build_model, infer
+from models import build_model
 from datasets import build_dataloaders
 
 
@@ -68,7 +68,7 @@ def train(
                 dec_inputs = torch.Tensor(train_batch['decoder_input']).long().to(device)
                 dec_targets = torch.Tensor(train_batch['decoder_output']).long().to(device)
 
-                loss = model(
+                loss, acc = model(
                     tokens=in_tokens,
                     dec_input=dec_inputs,
                     dec_target=dec_targets,
@@ -79,42 +79,41 @@ def train(
 
                 if device != torch.device('cpu'):
                     loss = loss.cpu()
+                    acc = acc.cpu()
                 loss = loss.detach().item()
-                pbar.set_description(f'Step: {step} Epoch: {epoch} Loss: {loss}')
+                acc = acc.detach().item()
+                pbar.set_description(f'Step: {step} Epoch: {epoch} Loss: {loss} Acc: {acc}')
                 writer.add_scalar('Loss/Train', loss, step)
+                writer.add_scalar('Accuracy/Train', acc, step)
                 
                 if val_steps and (step % val_steps == 0) and (val_iter is not None):
                     val_batch = next(val_iter)
-                    in_tokens = torch.Tensor(val_batch['encoder_input']).long().to(device)
-                    dec_targets = torch.Tensor(val_batch['decoder_output']).long()
+                    in_tokens = val_batch['encoder_input']
+                    dec_inputs = val_batch['decoder_input']
+                    dec_targets = val_batch['decoder_output']
 
-                    inputs, outputs = infer(model, in_tokens, tokenizer)
-                    target_outputs = [tokenizer.decode_line(x) for x in dec_targets]
+                    val_result = ''
+                    for sample_idx in range(len(val_batch)):
+                        text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
+                        target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
+                        prediction = model.infer(text_input, tokenizer)
+                        val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
 
-                    validation_examples = ""
-                    for idx, (input_sen, output_sen, target_sen) in enumerate(zip(inputs, outputs, target_outputs)):
-                        input_sen = input_sen.replace('PAD', '')
-                        target_sen = target_sen.replace('PAD', '')
-                        output_sen = output_sen.replace('PAD', '')
-                        validation_examples += f'Sample # {idx}\n'
-                        validation_examples += f'Input: {input_sen}\n'
-                        validation_examples += f'Target: {target_sen}\n'
-                        validation_examples += f'Predicted: {output_sen}\n\n'
+                    writer.add_text('Validation/Samples', val_result, global_step=step)
 
-                    writer.add_text('Validation/Samples', validation_examples, global_step=step)
-
-                    dec_targets = dec_targets.to(device)
-                    dec_inputs = torch.Tensor(val_batch['decoder_input']).long().to(device)
                     model.train()
-                    val_loss = model(
-                        tokens=in_tokens,
-                        dec_input=dec_inputs,
-                        dec_target=dec_targets,
+                    val_loss, val_acc = model(
+                        tokens=torch.Tensor(in_tokens).to(model.device),
+                        dec_input=torch.Tensor(dec_inputs).to(model.device),
+                        dec_target=torch.Tensor(dec_targets).to(model.device),
                     )
                     if device != torch.device('cpu'):
                         val_loss = val_loss.cpu()
+                        val_acc = val_acc.cpu()
                     val_loss = val_loss.detach().item()
+                    val_acc = val_acc.detach().item()
                     writer.add_scalar('Loss/Val', val_loss, step)
+                    writer.add_scalar('Accuracy/Val', val_acc, step)
                 
                 pbar.update(1)
                 step += 1

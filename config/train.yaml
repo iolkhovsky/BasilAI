@@ -7,6 +7,7 @@ validation_steps: 50
 autosave_mins: 1
 model:
   class: BasicLstmChatter
+  checkpoint: ""
   parameters:
     max_length: 60
     num_embeddings: 10000

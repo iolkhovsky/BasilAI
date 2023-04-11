@@ -54,7 +54,7 @@ class BasicLstmChatter(nn.Module):
         torch.save(self.state_dict(), path)
 
     @staticmethod
-    def load(path, max_length=60, start_token=SpecToken.START, stop_token=SpecToken.STOP, device='cpu'):
+    def load(path, max_length=60, num_embeddings=10000, start_token=SpecToken.START, stop_token=SpecToken.STOP, device='cpu'):
         model = BasicLstmChatter(max_length=10, start_token=SpecToken.START, stop_token=SpecToken.STOP)
         model.load_state_dict(torch.load(path, map_location=device))
         model.eval()

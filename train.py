@@ -93,7 +93,7 @@ def train(
                     dec_targets = val_batch['decoder_output']
 
                     val_result = ''
-                    for sample_idx in range(len(val_batch)):
+                    for sample_idx in range(len(in_tokens)):
                         text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
                         target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
                         prediction = model.infer(text_input, tokenizer)

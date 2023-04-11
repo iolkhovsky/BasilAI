@@ -26,7 +26,6 @@ class Decoder(nn.Module):
             in_features=hidden_size,
             out_features=num_embeddings,
         )
-        self._dense_do = nn.Dropout(p=0.2)
         self.softmax = nn.Softmax(dim=-1)
 
     def forward(self, tokens, context):
@@ -40,7 +39,6 @@ class Decoder(nn.Module):
         dec1_out, _ = self._dec_lstm_1(dec0_out, (dec1_in_h, dec1_in_c))
         
         logits = self._dec_dense(dec1_out)
-        logits = self._dense_do(logits)
         scores = self.softmax(logits)
         
         return scores

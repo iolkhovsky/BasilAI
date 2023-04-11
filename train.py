@@ -97,9 +97,11 @@ def train(
                         text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
                         target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
                         prediction = model.infer(text_input, tokenizer)
-                        val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
+                        if len(prediction.replace(' ', '')):
+                            val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
 
-                    writer.add_text('Validation/Samples', val_result, global_step=step)
+                    if len(val_result):
+                        writer.add_text('Validation/Samples', val_result, global_step=step)
 
                     model.train()
                     val_loss, val_acc = model(

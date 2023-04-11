@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models import Encoder, Decoder
+from models import Encoder, Decoder, MaskedCrossEntropy
 from datasets import SpecToken
 
 
@@ -11,7 +11,10 @@ class BasicLstmChatter(nn.Module):
         super(BasicLstmChatter, self).__init__()
         self._encoder = Encoder(num_embeddings=num_embeddings)
         self._decoder = Decoder(num_embeddings=num_embeddings)
-        self._loss = nn.CrossEntropyLoss()
+        # self._loss = nn.CrossEntropyLoss()
+        self._loss = MaskedCrossEntropy(
+            masked_tokens=[int(SpecToken.PAD), int(SpecToken.UNK)]
+        )
         self._start_token = torch.tensor(int(start_token)).long()
         self._stop_token = torch.tensor(int(stop_token)).long()
         self._max_length = max_length
@@ -24,8 +27,8 @@ class BasicLstmChatter(nn.Module):
             scores_reshaped = torch.reshape(scores, [b * n, -1])
             targets_reshaped = torch.reshape(dec_target, [b * n]).long()           
             loss = self._loss(
-                scores_reshaped,
-                targets_reshaped,
+                scores=scores_reshaped,
+                targets=targets_reshaped,
             )
             predictions = torch.reshape(torch.argmax(scores_reshaped, dim=-1), [b * n]).long()
             accuracy = torch.mean(torch.eq(predictions, targets_reshaped).float())

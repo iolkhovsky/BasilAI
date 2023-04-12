@@ -1,9 +1,9 @@
 device: cpu
-epochs: 100
+epochs: 250
 iterations: 0
 logs: logs
 checkpoints: checkpoints
-validation_steps: 4
+validation_steps: 250
 autosave_mins: 10
 model:
   class: BasicLstmChatter
@@ -24,7 +24,7 @@ dataset:
     path: ""
     max_words: 10000
   val_share: 0.05
-  train_batch: 32
+  train_batch: 64
   val_batch: 16
   class: ChatDataset
   parameters:

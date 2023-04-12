@@ -24,8 +24,10 @@ class Tokenizer:
         word = self.preprocessor(word)
         if word in self._word2id:
             return self._word2id[word]
-        else:
+        elif len(word):
             return int(self.tokens.UNK)
+        else:
+            None
 
     def decode(self, token):
         token = int(token)
@@ -35,7 +37,8 @@ class Tokenizer:
             return str(self.tokens.UNK)
 
     def encode_line(self, line):
-        return [self.encode(x) for x in self.preprocessor(line).split(" ")]
+        encoded_line = [self.encode(x) for x in self.preprocessor(line).split(" ") if len(x)]
+        return [x for x in encoded_line if x is not None]
 
     def decode_line(self, tokens):
         return " ".join([self.decode(x) for x in tokens])

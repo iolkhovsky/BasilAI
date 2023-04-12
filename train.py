@@ -35,8 +35,11 @@ def train(
         epochs = ceil(iterations / len(train_dataloader))
     
     val_iter = None
-    if val_dataloader is not None:
+    if val_dataloader is not None and len(val_dataloader):
         val_iter = itertools.cycle(iter(val_dataloader))
+    else:
+        val_iter = itertools.cycle(iter(train_dataloader))
+        print(f'Warning: validation dataset is empty -> training dataset is used for validation')
 
     session_timestamp = str(datetime.datetime.now())
     session_timestamp = session_timestamp.replace(" ", "").replace(":", "-").replace(".", "-")
@@ -86,7 +89,7 @@ def train(
                 writer.add_scalar('Loss/Train', loss, step)
                 writer.add_scalar('Accuracy/Train', acc, step)
                 
-                if val_steps and (step % val_steps == 0) and (val_iter is not None):
+                if val_steps and (step % val_steps == 0):
                     val_batch = next(val_iter)
                     in_tokens = val_batch['encoder_input']
                     dec_inputs = val_batch['decoder_input']
@@ -152,7 +155,7 @@ def run(args):
     train_dataloader, val_dataloader, tokenizer = \
         build_dataloaders(training_config['dataset'])
     print(f'Train dataset size: {len(train_dataloader)}')
-    print(f'Val dataset size: {len(val_dataloader)}')
+    print(f'Val dataset size: {len(val_dataloader) if val_dataloader else 0}')
 
     train(
         device=device,

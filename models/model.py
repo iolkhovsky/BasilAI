@@ -7,11 +7,23 @@ from datasets import SpecToken
 
 class BasicLstmChatter(nn.Module):
     def __init__(self, max_length=60, num_embeddings=10000, layers=2, do=0.5,
+                 hidden_size=256, embedding_dim=128,
                  start_token=SpecToken.START, stop_token=SpecToken.STOP):
         super(BasicLstmChatter, self).__init__()
-        self._encoder = Encoder(num_embeddings=num_embeddings)
-        self._decoder = Decoder(num_embeddings=num_embeddings)
-        # self._loss = nn.CrossEntropyLoss()
+        self._encoder = Encoder(
+            num_embeddings=num_embeddings,
+            hidden_size=hidden_size,
+            embedding_dim=embedding_dim,
+            layers=layers,
+            do=do,
+        )
+        self._decoder = Decoder(
+            num_embeddings=num_embeddings,
+            hidden_size=hidden_size,
+            embedding_dim=embedding_dim,
+            layers=layers,
+            do=do,
+        )
         self._loss = MaskedCrossEntropy(
             masked_tokens=[int(SpecToken.PAD), int(SpecToken.UNK)]
         )

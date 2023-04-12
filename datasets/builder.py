@@ -28,6 +28,9 @@ def build_dataloaders(config):
     train_size = len(dataset) - val_size
     train_dataset, val_dataset = torch.utils.data.random_split(dataset, [train_size, val_size])
 
-    return DataLoader(train_dataset, batch_size=config['train_batch'], shuffle=True), \
-        DataLoader(val_dataset, batch_size=config['val_batch'], shuffle=True), \
-        tokenizer
+    train_dataloader = DataLoader(train_dataset, batch_size=config['train_batch'], shuffle=True)
+    val_dataloader = None
+    if len(val_dataset):
+        val_dataloader = DataLoader(val_dataset, batch_size=config['val_batch'], shuffle=True)
+
+    return train_dataloader, val_dataloader, tokenizer

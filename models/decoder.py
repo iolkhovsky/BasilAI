@@ -23,7 +23,7 @@ class Decoder(nn.Module):
         )
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, tokens, context):
+    def forward(self, tokens, context, apply_softmax=True):
         dec_in_h = context['hidden']
         dec_in_c = context['context']
         
@@ -31,9 +31,10 @@ class Decoder(nn.Module):
         dec_out, _ = self._dec_lstm(embedded, (dec_in_h, dec_in_c))
         
         logits = self._dec_dense(dec_out)
-        scores = self.softmax(logits)
-        
-        return scores
+        if apply_softmax:
+            return self.softmax(logits)
+        else:
+            return logits
 
     def infer_token(self, token, context):
         dec_in_h = context['hidden']

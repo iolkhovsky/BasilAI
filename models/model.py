@@ -34,15 +34,15 @@ class BasicLstmChatter(nn.Module):
     def forward(self, tokens, dec_input=None, dec_target=None):
         context = self._encoder(tokens)
         if self.training:
-            scores = self._decoder(dec_input, context)
-            b, n, c = scores.shape
-            scores_reshaped = torch.reshape(scores, [b * n, -1])
+            logits = self._decoder(dec_input, context, apply_softmax=False)
+            b, n, c = logits.shape
+            logits_reshaped = torch.reshape(logits, [b * n, -1])
             targets_reshaped = torch.reshape(dec_target, [b * n]).long()           
             loss = self._loss(
-                scores=scores_reshaped,
+                scores=logits_reshaped,
                 targets=targets_reshaped,
             )
-            predictions = torch.reshape(torch.argmax(scores_reshaped, dim=-1), [b * n]).long()
+            predictions = torch.reshape(torch.argmax(logits_reshaped, dim=-1), [b * n]).long()
             accuracy = torch.mean(torch.eq(predictions, targets_reshaped).float())
             return loss, accuracy
         else:

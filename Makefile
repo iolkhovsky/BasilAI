@@ -2,6 +2,7 @@ RAW_DATA := 'data/chat.json'
 TARGET := 'target_id'
 DATASET := 'data/dataset.csv'
 TRAIN_CONFIG := 'config/train.yaml'
+TOKEN := 'chat_token'
 
 install: FORCE
 	python3 -m venv venv
@@ -19,4 +20,8 @@ FORCE:
 train: FORCE
 	python3 train.py \
 		--config=${TRAIN_CONFIG}
+FORCE:
+
+bot: FORCE
+	BOT_TOKEN=${TOKEN} python3 bot_server.py
 FORCE:

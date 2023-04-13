@@ -1,10 +1,12 @@
+import os
 import telebot
 
 from models import InferenceModel
 from utils import read_yaml
 
 
-bot = telebot.TeleBot('TOKEN')
+token = os.getenv('BOT_TOKEN', default = 'TOKEN')
+bot = telebot.TeleBot(token)
 config = read_yaml('config/eval.yaml')
 model = InferenceModel(
 	model_config=config['model'],

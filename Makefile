@@ -4,7 +4,13 @@ DATASET := 'data/dataset.csv'
 TRAIN_CONFIG := 'config/train.yaml'
 TOKEN := 'chat_token'
 
-install: FORCE
+install-dev: FORCE
+	python3 -m venv venv
+	source venv/bin/activate
+	pip3 install -r dev_requirements.txt
+FORCE:
+
+install-prod: FORCE
 	python3 -m venv venv
 	source venv/bin/activate
 	pip3 install -r requirements.txt

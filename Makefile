@@ -25,3 +25,7 @@ FORCE:
 bot: FORCE
 	BOT_TOKEN=${TOKEN} python3 bot_server.py
 FORCE:
+
+run: FORCE
+	python3 run_chat.py
+FORCE:

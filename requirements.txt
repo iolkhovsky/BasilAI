@@ -1,6 +1,6 @@
 # Python 3.8.9 (default, May 17 2022, 12:55:41) 
 # [Clang 13.1.6 (clang-1316.0.21.2.5)] on darwin
-numpy==1.24.2
+numpy==1.24.1
 pandas==2.0.0
 pyTelegramBotAPI==4.10.0
 PyYAML==6.0

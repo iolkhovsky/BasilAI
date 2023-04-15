@@ -9,7 +9,31 @@ from utils import read_yaml
 GROUP_TYPE = 'group'
 MY_NAME = '@NeuralGrayBot'
 CONFIG_CMD = '/config'
-GROUP_RESPONSE_PROB = 0.1
+
+
+class BotConfig:
+	group_response_prob = 0.1
+
+	@staticmethod
+	def parse(text):
+		pars = {}
+		msg_text = text.replace(MY_NAME, '').replace(CONFIG_CMD, '')
+		for item in msg_text.split(' '):
+			if len(item) >= 3:
+				key, value = item.split('=')
+				pars[key] = value
+		return pars
+
+	@staticmethod
+	def try_parse(text):
+		try:
+			pars = BotConfig.parse(text)
+			if 'p' in pars:
+				BotConfig.group_response_prob = float(pars['p'])
+			return f'New configuration: {BotConfig.group_response_prob}'
+		except Exception as e:
+			return f'Couldnt update configuration'
+		
 
 
 token = os.getenv('BOT_TOKEN', default = 'TOKEN')
@@ -19,24 +43,7 @@ model = InferenceModel(
 	model_config=config['model'],
 	tokenizer_config=config['tokenizer'],
 )
-
-
-def parse(msg_text):
-	try:
-		pars = {}
-		msg_text = msg_text.replace(MY_NAME, '').replace(CONFIG_CMD, '')
-		for item in msg_text.split(' '):
-			if len(item) >= 3:
-				key, value = item.split('=')
-				pars[key] = value
-		return pars
-	except Exception as e:
-		return {}
-
-
-def config(pars):
-	if 'p' in pars:
-		GROUP_RESPONSE_PROB = float(pars['p'])
+config = BotConfig()
 
 
 @bot.message_handler(commands=['start'])
@@ -48,14 +55,12 @@ def send_welcome(message):
 def reply(message):
 	msg_text = message.text
 	if MY_NAME in msg_text and CONFIG_CMD in msg_text:
-		pars = parse(msg_text)
-		config(pars)
-		bot.reply_to(message, f'Got new configuration: {pars}')
+		bot.reply_to(message, config.try_parse(msg_text))
 	else:
 		if message.chat.type == GROUP_TYPE:
 			if MY_NAME in message.text:
 				bot.reply_to(message, model(message.text))
-			elif random.uniform(0, 1) <= GROUP_RESPONSE_PROB:
+			elif random.uniform(0, 1) <= config.group_response_prob:
 				bot.send_message(message.chat.id, model(message.text))
 		else:
 			bot.send_message(message.chat.id, model(message.text))

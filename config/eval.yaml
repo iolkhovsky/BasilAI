@@ -1,7 +1,7 @@
 device: cpu
 model:
   class: BasicLstmChatter
-  checkpoint: checkpoints/2023-04-1212-54-21-801641/chatter_ep_113_step_7964
+  checkpoint: checkpoints/2023-04-1511-52-58-014808/chatter_final_ep_499_step_9000
   parameters: 
     max_length: 60
     num_embeddings: 10000
@@ -10,4 +10,4 @@ model:
     hidden_size: 256
     embedding_dim: 128
 tokenizer:
-  path: checkpoints/2023-04-1212-54-21-801641/tokenizer
+  path: checkpoints/2023-04-1511-52-58-014808/tokenizer

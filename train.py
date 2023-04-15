@@ -89,36 +89,37 @@ def train(
                 writer.add_scalar('Loss/Train', loss, step)
                 writer.add_scalar('Accuracy/Train', acc, step)
                 
-                if val_steps and (step % val_steps == 0):
-                    val_batch = next(val_iter)
-                    in_tokens = val_batch['encoder_input']
-                    dec_inputs = val_batch['decoder_input']
-                    dec_targets = val_batch['decoder_output']
+                with torch.no_grad():
+                    if val_steps and (step % val_steps == 0):
+                        val_batch = next(val_iter)
+                        in_tokens = val_batch['encoder_input']
+                        dec_inputs = val_batch['decoder_input']
+                        dec_targets = val_batch['decoder_output']
 
-                    val_result = ''
-                    for sample_idx in range(len(in_tokens)):
-                        text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
-                        target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
-                        prediction = model.infer(text_input, tokenizer)
-                        if len(prediction.replace(' ', '')):
-                            val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
+                        val_result = ''
+                        for sample_idx in range(len(in_tokens)):
+                            text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
+                            target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
+                            prediction = model.infer(text_input, tokenizer)
+                            if len(prediction.replace(' ', '')):
+                                val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
 
-                    if len(val_result):
-                        writer.add_text('Validation/Samples', val_result, global_step=step)
+                        if len(val_result):
+                            writer.add_text('Validation/Samples', val_result, global_step=step)
 
-                    model.train()
-                    val_loss, val_acc = model(
-                        tokens=torch.Tensor(in_tokens).to(model.device),
-                        dec_input=torch.Tensor(dec_inputs).to(model.device),
-                        dec_target=torch.Tensor(dec_targets).to(model.device),
-                    )
-                    if device != torch.device('cpu'):
-                        val_loss = val_loss.cpu()
-                        val_acc = val_acc.cpu()
-                    val_loss = val_loss.detach().item()
-                    val_acc = val_acc.detach().item()
-                    writer.add_scalar('Loss/Val', val_loss, step)
-                    writer.add_scalar('Accuracy/Val', val_acc, step)
+                        model.train()
+                        val_loss, val_acc = model(
+                            tokens=torch.Tensor(in_tokens).to(model.device),
+                            dec_input=torch.Tensor(dec_inputs).to(model.device),
+                            dec_target=torch.Tensor(dec_targets).to(model.device),
+                        )
+                        if device != torch.device('cpu'):
+                            val_loss = val_loss.cpu()
+                            val_acc = val_acc.cpu()
+                        val_loss = val_loss.detach().item()
+                        val_acc = val_acc.detach().item()
+                        writer.add_scalar('Loss/Val', val_loss, step)
+                        writer.add_scalar('Accuracy/Val', val_acc, step)
                 
                 pbar.update(1)
                 step += 1

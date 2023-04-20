@@ -24,6 +24,10 @@ def register_handlers(app, bot):
 			bot.reply_to(message, f'Got new configuration: {str(app.config)}')
 			return
 
+		reaction = app.react(msg_text)
+		if reaction is not None:
+			pass  # TODO Support emoji reactions on messages
+
 		if message.chat.type == 'group':
 			if app.name in msg_text:
 				bot.reply_to(message, app.answer(msg_text))

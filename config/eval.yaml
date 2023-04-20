@@ -1,5 +1,5 @@
 device: cpu
-checkpoint: "logs/test/version_0/checkpoints/last.ckpt"
+checkpoint: "checkpoints/2023-04-21/last.ckpt"
 model:
   class: models.BasicLstmChatter
   parameters:
@@ -11,4 +11,4 @@ model:
 tokenizer:
   class: tokenizers.SimpleTokenizer
   parameters:
-    path: "data/vocab.json"
+    path: "checkpoints/2023-04-21/vocab.json"

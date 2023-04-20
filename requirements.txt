@@ -3,6 +3,7 @@
 numpy==1.24.2
 pandas==2.0.0
 pyTelegramBotAPI==4.10.0
+lightning==2.0.1.post0
 PyYAML==6.0
 tqdm==4.65.0
 --extra-index-url https://download.pytorch.org/whl/cpu

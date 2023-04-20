@@ -1,20 +1,18 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
+
+__all__ = ["MaskedCrossEntropy"]
 
 
 class MaskedCrossEntropy(nn.Module):
     def __init__(self, masked_tokens):
         super(MaskedCrossEntropy, self).__init__()
         self._masked_tokens = masked_tokens
-        self._ce = nn.CrossEntropyLoss(reduction='none')
+        self._ce = nn.CrossEntropyLoss(reduction="none")
 
-    def forward(self, scores, targets):
-        targets = targets.long()           
-        loss = self._ce(
-            scores,
-            targets,
-        )
+    def forward(self, logits, targets):
+        targets = targets.long()
+        loss = self._ce(logits, targets)
         mask = torch.ones_like(targets).float()
         for token in self._masked_tokens:
             mask = mask * (targets != token).float()

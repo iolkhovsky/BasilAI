@@ -1,13 +1,14 @@
 device: cpu
+checkpoint: "logs/test/version_0/checkpoints/last.ckpt"
 model:
-  class: BasicLstmChatter
-  checkpoint: checkpoints/2023-04-1511-52-58-014808/chatter_final_ep_499_step_9000
-  parameters: 
+  class: models.BasicLstmChatter
+  parameters:
     max_length: 60
     num_embeddings: 10000
     layers: 2
-    do: 0.5
     hidden_size: 256
     embedding_dim: 128
 tokenizer:
-  path: checkpoints/2023-04-1511-52-58-014808/tokenizer
+  class: tokenizers.SimpleTokenizer
+  parameters:
+    path: "data/vocab.json"

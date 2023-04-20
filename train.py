@@ -1,183 +1,94 @@
 import argparse
-import datetime
-import itertools
-from math import ceil
 import os
-from time import time
-import torch
-from tqdm import tqdm
-from torch.utils.tensorboard import SummaryWriter
 
-from utils import read_yaml, get_available_device
-from models import build_model
-from datasets import build_dataloaders
+import lightning as pl
+from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.loggers import TensorBoardLogger
+from lightning.pytorch.profilers import SimpleProfiler
+
+from pl import BasilAIDataModule, BasilAIModule
+from utils import read_yaml
 
 
 def parse_cmd_args():
-    parser = argparse.ArgumentParser(prog='BasilAI trainer')
-    parser.add_argument('--config', default=os.path.join('config', 'train.yaml'),
-                        help='Path to training config')
-    args = parser.parse_args()
-    return args
-
-
-def train(
-        device, model, optimizer, train_dataloader, tokenizer,
-        val_dataloader=None, epochs=0, iterations=100, logs_path='logs',
-        checkpoints_path='checkpoints', val_steps=50, autosave_secs=None,
-):
-    model.to(device)
-
-    total_steps = iterations
-    if epochs:
-        total_steps = len(train_dataloader) * epochs
-    else:
-        epochs = ceil(iterations / len(train_dataloader))
-    
-    val_iter = None
-    if val_dataloader is not None and len(val_dataloader):
-        val_iter = itertools.cycle(iter(val_dataloader))
-    else:
-        val_iter = itertools.cycle(iter(train_dataloader))
-        print(f'Warning: validation dataset is empty -> training dataset is used for validation')
-
-    session_timestamp = str(datetime.datetime.now())
-    session_timestamp = session_timestamp.replace(" ", "").replace(":", "-").replace(".", "-")
-    logs_path = os.path.join(
-        logs_path,
-        session_timestamp,
+    parser = argparse.ArgumentParser(prog="BasilAI trainer")
+    parser.add_argument(
+        "--config",
+        default=os.path.join("config", "train.yaml"),
+        help="Path to training config",
     )
-    os.makedirs(logs_path)
-    autosave_tstamp = None
-    if autosave_secs is not None:
-        checkpoints_path = os.path.join(
-            checkpoints_path,
-            session_timestamp,
+    return parser.parse_args()
+
+
+def train_pl(config):
+    trainer_config = config.get("trainer", None)
+    if trainer_config is None:
+        raise ValueError(f"There is no 'trainer' configuration:\n{config}")
+    device = trainer_config.get("device", "auto")
+    log_dir = trainer_config.get("logs", "logs")
+    experiment = trainer_config.get("experiment", "experiment")
+    epochs = trainer_config.get("epochs", 250)
+    logger = TensorBoardLogger(save_dir=log_dir, name=experiment)
+    callbacks = [
+        ModelCheckpoint(
+            dirpath=None,
+            filename="epoch-{epoch:04d}-loss-{Loss/valid:.6f}-acc-{Accuracy/valid:.6f}",
+            monitor="Accuracy/valid",
+            verbose=True,
+            save_last=True,
+            save_top_k=3,
+            mode="max",
+            auto_insert_metric_name=False,
         )
-        os.makedirs(checkpoints_path)
-        autosave_tstamp = time()
-        tokenizer.save(os.path.join(checkpoints_path, 'tokenizer'))
-
-    writer = SummaryWriter(log_dir=logs_path)
-
-    step = 0
-    with tqdm(total=total_steps) as pbar:
-        for epoch in range(epochs):
-            for train_batch in train_dataloader:
-                try:
-                    model.train()
-                    optimizer.zero_grad()
-
-                    in_tokens = torch.Tensor(train_batch['encoder_input']).long().to(device)
-                    dec_inputs = torch.Tensor(train_batch['decoder_input']).long().to(device)
-                    dec_targets = torch.Tensor(train_batch['decoder_output']).long().to(device)
-
-                    loss, acc = model(
-                        tokens=in_tokens,
-                        dec_input=dec_inputs,
-                        dec_target=dec_targets,
-                    )
-                    
-                    loss.backward()
-                    optimizer.step()
-
-                    if device != torch.device('cpu'):
-                        loss = loss.cpu()
-                        acc = acc.cpu()
-                    loss = loss.detach().item()
-                    acc = acc.detach().item()
-                    pbar.set_description(f'Step: {step} Epoch: {epoch} Loss: {loss} Acc: {acc}')
-                    writer.add_scalar('Loss/Train', loss, step)
-                    writer.add_scalar('Accuracy/Train', acc, step)
-                    
-                    with torch.no_grad():
-                        if val_steps and (step % val_steps == 0):
-                            val_batch = next(val_iter)
-                            in_tokens = val_batch['encoder_input']
-                            dec_inputs = val_batch['decoder_input']
-                            dec_targets = val_batch['decoder_output']
-
-                            val_result = ''
-                            for sample_idx in range(len(in_tokens)):
-                                text_input = tokenizer.decode_line(in_tokens[sample_idx]).replace('PAD', '')
-                                target_output = tokenizer.decode_line(dec_targets[sample_idx]).replace('PAD', '')
-                                prediction = model.infer(text_input, tokenizer)
-                                if len(prediction.replace(' ', '')):
-                                    val_result += f'Sample # {sample_idx} | {text_input} | {prediction} | ({target_output}) \n'
-
-                            if len(val_result):
-                                writer.add_text('Validation/Samples', val_result, global_step=step)
-
-                            model.train()
-                            val_loss, val_acc = model(
-                                tokens=torch.Tensor(in_tokens).to(model.device),
-                                dec_input=torch.Tensor(dec_inputs).to(model.device),
-                                dec_target=torch.Tensor(dec_targets).to(model.device),
-                            )
-                            if device != torch.device('cpu'):
-                                val_loss = val_loss.cpu()
-                                val_acc = val_acc.cpu()
-                            val_loss = val_loss.detach().item()
-                            val_acc = val_acc.detach().item()
-                            writer.add_scalar('Loss/Val', val_loss, step)
-                            writer.add_scalar('Accuracy/Val', val_acc, step)
-
-                    if autosave_tstamp is not None:
-                        if time() > autosave_tstamp + autosave_secs:
-                            autosave_tstamp = time()
-                            model_path = os.path.join(checkpoints_path, f"chatter_ep_{epoch}_step_{step}")
-                            model.save(model_path)
-                
-                except Exception as e:
-                    print(f'Got exception during global step: {step}:\n{e}')
-
-                pbar.update(1)
-                step += 1
-
-                if step >= total_steps:
-                    break
-        
-            if step >= total_steps:
-                break
-    model_path = os.path.join(checkpoints_path, f"chatter_final_ep_{epoch}_step_{step}")
-    model.save(model_path)
-    print('Completed')
+    ]
+    profiler = SimpleProfiler(log_dir, filename="profiler_report")
+    trainer = pl.Trainer(
+        accelerator=device,
+        strategy="auto",
+        devices="auto",
+        num_nodes=1,
+        precision="32-true",
+        logger=logger,
+        callbacks=callbacks,
+        fast_dev_run=False,
+        max_epochs=epochs,
+        min_epochs=None,
+        max_steps=-1,
+        min_steps=None,
+        max_time=None,
+        limit_train_batches=None,
+        limit_val_batches=None,
+        limit_test_batches=None,
+        limit_predict_batches=None,
+        overfit_batches=0.0,
+        val_check_interval=None,
+        check_val_every_n_epoch=1,
+        num_sanity_val_steps=None,
+        log_every_n_steps=10,
+        enable_checkpointing=None,
+        enable_progress_bar=True,
+        enable_model_summary=True,
+        accumulate_grad_batches=1,
+        gradient_clip_val=None,
+        gradient_clip_algorithm="norm",
+        deterministic=None,
+        benchmark=None,
+        inference_mode=True,
+        use_distributed_sampler=True,
+        profiler=profiler,
+        detect_anomaly=True,
+        barebones=False,
+        plugins=None,
+        sync_batchnorm=False,
+        reload_dataloaders_every_n_epochs=0,
+        default_root_dir=None,
+    )
+    module = BasilAIModule(config)
+    datamodule = BasilAIDataModule(config)
+    trainer.fit(model=module, datamodule=datamodule)
 
 
-def run(args):
+if __name__ == "__main__":
+    args = parse_cmd_args()
     training_config = read_yaml(args.config)
-
-    device = training_config['device']
-    if device == 'auto':
-        device = get_available_device()
-    device = torch.device(device)
-
-    model, optimizer = build_model(
-        training_config['model'],
-        training_config['optimizer'],
-    )
-    print(model)
-
-    train_dataloader, val_dataloader, tokenizer = \
-        build_dataloaders(training_config['dataset'])
-    print(f'Train dataset size: {len(train_dataloader)}')
-    print(f'Val dataset size: {len(val_dataloader) if val_dataloader else 0}')
-
-    train(
-        device=device,
-        model=model,
-        optimizer=optimizer,
-        train_dataloader=train_dataloader,
-        tokenizer=tokenizer,
-        val_dataloader=val_dataloader,
-        epochs=training_config['epochs'],
-        iterations=training_config['iterations'],
-        logs_path=training_config['logs'],
-        checkpoints_path=training_config['checkpoints'],
-        val_steps=training_config['validation_steps'],
-        autosave_secs=training_config['autosave_mins'] * 60.,
-    )
-
-
-if __name__ == '__main__':
-    run(parse_cmd_args())
+    train_pl(training_config)

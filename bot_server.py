@@ -1,5 +1,6 @@
 import os
 import random
+
 import telebot
 
 from bot import ChatBotRegistry
@@ -49,6 +50,7 @@ if __name__ == '__main__':
 		tokenizer_config=config['tokenizer'],
 	)
 	app = ChatBotRegistry.build('BasicChatBot', '@NeuralGrayBot', model)
+
 
 	token = os.getenv('BOT_TOKEN', default = 'TOKEN')
 	telegram_bot = telebot.TeleBot(token)

@@ -3,64 +3,56 @@ import random
 
 import telebot
 
+from bot import ChatBotRegistry
 from models import InferenceModel
 from utils import read_yaml
 
-GROUP_TYPE = "group"
-MY_NAME = "@NeuralGrayBot"
-CONFIG_CMD = "/config"
+
+def register_handlers(app, bot):
+
+	@bot.message_handler(commands=['start'])
+	def welcome(message):
+		bot.reply_to(message, app.welcome())
+
+	@bot.message_handler(func=lambda message: message.reply_to_message and message.reply_to_message.from_user.id == telegram_bot.get_me().id)
+	def on_reply(message):
+		bot.reply_to(message, app.answer(message.text))
+
+	@bot.message_handler(func=lambda message: True)
+	def on_message(message):
+		msg_text = message.text
+		if app.try_parse_command(msg_text):
+			bot.reply_to(message, f'Got new configuration: {str(app.config)}')
+			return
+
+		reaction = app.react(msg_text)
+		if reaction is not None:
+			pass  # TODO Support emoji reactions on messages
+
+		if message.chat.type == 'group':
+			if app.name in msg_text:
+				bot.reply_to(message, app.answer(msg_text))
+			elif random.uniform(0, 1) <= app.config.response_prob_in_group:
+				bot.reply_to(message, app.answer(msg_text))
+		else:
+			bot.send_message(message.chat.id, app.answer(msg_text))
 
 
-class BotConfig:
-    group_response_prob = 0.1
-
-    @staticmethod
-    def parse(text):
-        pars = {}
-        msg_text = text.replace(MY_NAME, "").replace(CONFIG_CMD, "")
-        for item in msg_text.split(" "):
-            if len(item) >= 3:
-                key, value = item.split("=")
-                pars[key] = value
-        return pars
-
-    @staticmethod
-    def try_parse(text):
-        try:
-            pars = BotConfig.parse(text)
-            if "p" in pars:
-                BotConfig.group_response_prob = float(pars["p"])
-            return f"New configuration: {BotConfig.group_response_prob}"
-        except Exception as e:
-            return f"Couldnt update configuration"
+def run(app, bot):
+	register_handlers(app, bot)
+	telegram_bot.infinity_polling()
 
 
-token = os.getenv("BOT_TOKEN", default="TOKEN")
-bot = telebot.TeleBot(token)
-config = read_yaml("config/eval.yaml")
-model = InferenceModel(config)
-config = BotConfig()
+if __name__ == '__main__':
+	config = read_yaml('config/eval.yaml')
+	model = InferenceModel(
+		model_config=config['model'],
+		tokenizer_config=config['tokenizer'],
+	)
+	app = ChatBotRegistry.build('BasicChatBot', '@NeuralGrayBot', model)
 
 
-@bot.message_handler(commands=["start"])
-def send_welcome(message):
-    bot.reply_to(message, "Neural Gray Bot")
+	token = os.getenv('BOT_TOKEN', default = 'TOKEN')
+	telegram_bot = telebot.TeleBot(token)
 
-
-@bot.message_handler(func=lambda message: True)
-def reply(message):
-    msg_text = message.text
-    if MY_NAME in msg_text and CONFIG_CMD in msg_text:
-        bot.reply_to(message, config.try_parse(msg_text))
-    else:
-        if message.chat.type == GROUP_TYPE:
-            if MY_NAME in message.text:
-                bot.reply_to(message, model(message.text))
-            elif random.uniform(0, 1) <= config.group_response_prob:
-                bot.send_message(message.chat.id, model(message.text))
-        else:
-            bot.send_message(message.chat.id, model(message.text))
-
-
-if __name__ == "__main__":
-    bot.infinity_polling()
+	run(app, telegram_bot)

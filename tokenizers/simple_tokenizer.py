@@ -39,10 +39,16 @@ class SimpleTokenizer(BaseTokenizer):
         tokens = [self._word2id.get(word, self.unk_token) for word in words if word]
         return tokens
 
+    def encode_word(self, word: str) -> int:
+        return self._word2id.get(self.preprocessor(word), self.unk_token)
+
     def decode(self, tokens: List[int]) -> str:
         tokens = [int(token) for token in tokens]
-        words = [self._id2word.get(int(token), self.unk_token_name) for token in tokens]
+        words = [self.decode_token(token) for token in tokens]
         return " ".join(words)
+
+    def decode_token(self, token: int) -> str:
+        return self._id2word.get(int(token), self.unk_token_name)
 
     def fit(
         self,

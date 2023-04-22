@@ -1,14 +1,11 @@
-device: cpu
-epochs: 250
-iterations: 0
-logs: logs
-checkpoints: checkpoints
-validation_steps: 250
-autosave_mins: 10
+trainer:
+  device: gpu
+  epochs: 250
+  logs: "logs"
+  experiment: "test"
 model:
-  class: BasicLstmChatter
-  checkpoint: ""
-  parameters: 
+  class: models.BasicLstmChatter
+  parameters:
     max_length: 60
     num_embeddings: 10000
     layers: 2
@@ -16,18 +13,26 @@ model:
     hidden_size: 256
     embedding_dim: 128
 optimizer:
-  type: RMSprop
+  class: torch.optim.RMSprop
   parameters:
     lr: 0.01
-dataset:
-  tokenizer:
-    path: ""
-    max_words: 10000
-  val_share: 0.05
-  train_batch: 64
-  val_batch: 16
-  class: ChatDataset
+    weight_decay: 0.0
+tokenizer:
+  class: tokenizers.SimpleTokenizer
   parameters:
-    path: data/dataset.csv
+    path: "data/vocab.json"
+    max_words: 10000
+    fit: False
+    fit_dataset_path: "data/dataset.csv"
+dataset:
+  class: datasets.ChatDataset
+  parameters:
+    path: "data/dataset.csv"
     max_words: 60
     limit: 0
+  valid_share: 0.05
+  train_batch: 64
+  valid_batch: 16
+  num_workers: 4
+criterion:
+  class: criterions.MaskedCrossEntropy

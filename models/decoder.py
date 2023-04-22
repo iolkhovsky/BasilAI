@@ -21,35 +21,18 @@ class Decoder(nn.Module):
             in_features=hidden_size,
             out_features=num_embeddings,
         )
-        self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, tokens, context, apply_softmax=True):
+    def forward(self, tokens, context):
         dec_in_h = context["hidden"]
         dec_in_c = context["context"]
 
-        embedded = self.embedding(tokens)
-        dec_out, _ = self._dec_lstm(embedded, (dec_in_h, dec_in_c))
+        embeddings = self.embedding(tokens)
+        dec_out, (dec_h, dec_c) = self._dec_lstm(embeddings, (dec_in_h, dec_in_c))
 
         logits = self._dec_dense(dec_out)
-        if apply_softmax:
-            return self.softmax(logits)
-        else:
-            return logits
-
-    def infer_tokens(self, token, context):
-        dec_in_h = context["hidden"]
-        dec_in_c = context["context"]
-
-        embedding = self.embedding(token)
-        dec_out, (dec_h, dec_c) = self._dec_lstm(embedding, (dec_in_h, dec_in_c))
-
-        logits = self._dec_dense(dec_out)
-        scores = self.softmax(logits)
-        pred_tokens = torch.argmax(scores, dim=-1).squeeze(-1)
 
         return (
             logits,
-            pred_tokens,
             {
                 "hidden": dec_h,
                 "context": dec_c,

@@ -8,8 +8,13 @@ class TemperatureSampler(nn.Module):
         self._temperature = temperature
         
     def forward(self, logits):
-        assert len(logits.shape) == 2, f'logits must have shape (b, c)'
-        scaled_logits = logits / self._temperature
-        probabilities = nn.functional.softmax(scaled_logits, dim=-1)
-        sample = torch.multinomial(probabilities, num_samples=1)
-        return sample.squeeze()
+        if self._temperature <= 0.0:
+            tokens = torch.argmax(torch.softmax(logits, dim=-1), dim=-1)
+        else:
+            b, n, c = logits.shape
+            reshaped_logits = torch.reshape(logits, [b*n, c])
+            scaled_reshaped_logits = reshaped_logits / self._temperature
+            reshaped_probabilities = nn.functional.softmax(scaled_reshaped_logits, dim=-1)
+            reshaped_tokens = torch.multinomial(reshaped_probabilities, num_samples=1)
+            tokens = torch.reshape(reshaped_tokens, [b, n])
+        return tokens

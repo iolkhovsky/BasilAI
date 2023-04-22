@@ -114,14 +114,10 @@ class BasilAIModule(pl.LightningModule):
         target_output = batch["target_sentence"]
 
         with torch.no_grad():
-            logits = self.model(tokens=in_tokens).clone().detach()
-            predicted_tokens = torch.argmax(torch.softmax(logits, dim=-1), dim=-1).cpu()
-            print(in_tokens.shape, logits.shape, predicted_tokens.shape)
+            tokens = self.model(tokens=in_tokens).clone().detach().cpu()
             val_result = ""
             for sample_idx in range(len(in_tokens)):
-                prediction = self.tokenizer.decode(
-                    predicted_tokens[sample_idx].tolist()
-                ).replace("PAD", " ")
+                prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).replace("PAD", " ")
                 val_result += (
                     f"Sample #{sample_idx}:\n\ninput: {text_input[sample_idx]}\n\npredicted: "
                     f"{prediction}\n\ntarget: {target_output[sample_idx]}\n\n"

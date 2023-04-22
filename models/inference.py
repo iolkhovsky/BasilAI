@@ -42,8 +42,7 @@ class InferenceModel:
         input_tokens = (
             torch.tensor(input_tokens, dtype=torch.long).unsqueeze(0).to(self.device)
         )
-        logits = self.model(input_tokens)[0]
-        tokens = torch.argmax(torch.softmax(logits, dim=-1), dim=-1).cpu()
+        tokens = self.model(input_tokens)[0].cpu()
         text = self.tokenizer.decode(tokens.tolist())
         return InferenceModel._postprocessor(text)
 

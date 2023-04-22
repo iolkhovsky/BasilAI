@@ -45,14 +45,10 @@ def run(app, bot):
 
 if __name__ == '__main__':
 	config = read_yaml('config/eval.yaml')
-	model = InferenceModel(
-		model_config=config['model'],
-		tokenizer_config=config['tokenizer'],
-	)
+	model = InferenceModel(config)
 	app = ChatBotRegistry.build('BasicChatBot', '@NeuralGrayBot', model)
 
-
-	token = os.getenv('BOT_TOKEN', default = 'TOKEN')
+	token = os.getenv('BOT_TOKEN', default='TOKEN')
 	telegram_bot = telebot.TeleBot(token)
 
 	run(app, telegram_bot)

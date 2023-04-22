@@ -24,7 +24,7 @@ class InferenceModel:
             start_token=self.tokenizer.start_token,
             stop_token=self.tokenizer.stop_token,
         )
-        checkpoint = torch.load(checkpoint_path)
+        checkpoint = torch.load(checkpoint_path, map_location="cpu")
         model_state_dict = {
             key.replace("model.", ""): val
             for key, val in checkpoint["state_dict"].items()

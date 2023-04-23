@@ -3,9 +3,12 @@ from typing import Any, Dict, Optional, Sequence, Union
 import lightning as pl
 import torch
 import torchtext
+import torchvision
 
 from tokenizers import BaseTokenizer
-from utils import instantiate, get_ram_consumption_mb, compute_accuracy, compute_bleu_score
+from utils import (
+     instantiate, compute_accuracy, compute_bleu_score, plot_attention_scores, get_ram_consumption_mb
+)
 
 
 class BasilAIModule(pl.LightningModule):
@@ -34,6 +37,7 @@ class BasilAIModule(pl.LightningModule):
             start_token=self.tokenizer.start_token,
             stop_token=self.tokenizer.stop_token,
         )
+        self._log_attention = self.model_config['parameters'].get('use_attention', False)
         self.train_batch_size: Optional[int] = self.dataset_config.get(
             "train_batch", None
         )
@@ -70,9 +74,10 @@ class BasilAIModule(pl.LightningModule):
         in_tokens = batch["encoder_input"]
         dec_inputs = batch["decoder_input"]
         dec_targets = batch["decoder_output"]
+        attn_mask = in_tokens != self.tokenizer.pad_token
 
         with torch.set_grad_enabled(train_stage):
-            logits = self.model(tokens=in_tokens, dec_input=dec_inputs)
+            logits = self.model(tokens=in_tokens, dec_input=dec_inputs, mask=attn_mask)
             logits_reshaped = logits.flatten(0, -2)
             targets_reshaped = dec_targets.flatten(0, -1)
             loss = self.criterion(logits=logits_reshaped, targets=targets_reshaped)
@@ -96,6 +101,7 @@ class BasilAIModule(pl.LightningModule):
                 f"Accuracy/{stage}": accuracy,
                 f"Resources/RAM": get_ram_consumption_mb(),
                 f"BLEU/{stage}": bleu,
+                f"Resources/RAM": get_ram_consumption_mb(),
             },
             prog_bar=True,
             logger=True,
@@ -118,7 +124,22 @@ class BasilAIModule(pl.LightningModule):
             text_input = batch["in_sentence"]
             target_output = batch["target_sentence"]
             with torch.no_grad():
-                tokens = self.model(tokens=in_tokens).clone().detach().cpu()
+                if self._log_attention:
+                    attn_mask = in_tokens != self.tokenizer.pad_token
+                    tokens, attn_scores = self.model(tokens=in_tokens, return_attn_scores=True, mask=attn_mask)
+                else:
+                    tokens = self.model(tokens=in_tokens)
+
+                tokens = tokens.clone().detach().cpu()
+
+                if self._log_attention:
+                    attn_scores = attn_scores.clone().detach().cpu().numpy()
+                    self.log_attention(
+                        scores=attn_scores,
+                        in_tokens=in_tokens,
+                        out_tokens=tokens,
+                    )
+
                 val_result = ""
                 for sample_idx in range(max(len(in_tokens), 16)):
                     prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).replace("PAD", " ")
@@ -130,3 +151,26 @@ class BasilAIModule(pl.LightningModule):
                     self.logger.experiment.add_text(
                         f"Samples/valid", val_result, global_step=self.current_epoch
                     )
+
+    def log_attention(self, scores, in_tokens, out_tokens):
+        scores_viz_images = []
+        for scores_map, sample_in_tokens, sample_out_tokens in \
+                zip(scores, in_tokens, out_tokens):
+            sample_visualization = plot_attention_scores(
+                input_words=[
+                    self.tokenizer.decode([x]).replace(self.tokenizer.pad_token_name, '')
+                    for x in sample_in_tokens
+                ],
+                output_words=[
+                    self.tokenizer.decode([x]).replace(self.tokenizer.pad_token_name, '')
+                    for x in sample_out_tokens
+                ],
+                scores=scores_map,
+            )
+            scores_viz_images.append(sample_visualization)
+        
+        scores_map_tensors = [torch.permute(torch.from_numpy(x), (2, 0, 1)) for x in scores_viz_images]
+        scores_grid = torchvision.utils.make_grid(scores_map_tensors)
+
+        writer = self.logger.experiment
+        writer.add_image(f'Attention', scores_grid, self.global_step)

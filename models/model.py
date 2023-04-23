@@ -1,7 +1,7 @@
 import torch
 import torch.nn as nn
 
-from models import Decoder, Encoder
+from models import Decoder, Encoder, AttnDecoder
 from tokenizers import BaseSpecToken
 from models.temp_sampling import TemperatureSampler
 
@@ -18,6 +18,7 @@ class BasicLstmChatter(nn.Module):
         temperature: float = 0.0,
         start_token=BaseSpecToken.START,
         stop_token=BaseSpecToken.STOP,
+        use_attention = False,
     ):
         super(BasicLstmChatter, self).__init__()
         self._encoder = Encoder(
@@ -27,7 +28,11 @@ class BasicLstmChatter(nn.Module):
             layers=layers,
             do=do,
         )
-        self._decoder = Decoder(
+        decoder_class = Decoder
+        if use_attention:
+            decoder_class = AttnDecoder
+
+        self._decoder = decoder_class(
             num_embeddings=num_embeddings,
             hidden_size=hidden_size,
             embedding_dim=embedding_dim,
@@ -39,25 +44,33 @@ class BasicLstmChatter(nn.Module):
         self.register_buffer("stop_token", torch.tensor(stop_token, dtype=torch.long))
         self._max_length = max_length
 
-    def forward(self, tokens, dec_input=None):
+    def forward(self, tokens, dec_input=None, return_attn_scores=False, mask=None):
         context = self._encoder(tokens)
         if self.training or dec_input is not None:
-            logits, _ = self._decoder(dec_input, context)
+            logits, _ = self._decoder(dec_input, context, mask=mask)
             return logits
         else:
             b, _ = tokens.shape
-            res_tokens = []
+            res_tokens, attn_scores = [], []
 
             in_token = self.start_token.unsqueeze(0).unsqueeze(0).expand(b, 1)
-            logits, context = self._decoder(in_token, context)
+            logits, context = self._decoder(in_token, context, mask=mask)
             _tokens = self._temp_sampler(logits)
             res_tokens.append(_tokens)
+            if return_attn_scores:
+                attn_scores.append(context['attention'])
 
-            for token_idx in range(1, self._max_length):
+            for _ in range(1, self._max_length):
                 in_token = res_tokens[-1]
-                logits, context = self._decoder(in_token, context)
+                logits, context = self._decoder(in_token, context, mask=mask)
                 _tokens = self._temp_sampler(logits)
                 res_tokens.append(_tokens)
+                if return_attn_scores:
+                    attn_scores.append(context['attention'])
 
             res_tokens = torch.concat(res_tokens, dim=1)
-            return res_tokens
+            if return_attn_scores:
+                attn_scores = torch.concat(attn_scores, dim=1)
+                return res_tokens, attn_scores
+            else:
+                return res_tokens

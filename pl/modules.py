@@ -4,7 +4,7 @@ import lightning as pl
 import torch
 
 from tokenizers import BaseTokenizer
-from utils import instantiate
+from utils import instantiate, get_ram_consumption_mb
 
 
 class BasilAIModule(pl.LightningModule):
@@ -92,6 +92,7 @@ class BasilAIModule(pl.LightningModule):
             {
                 f"Loss/{stage}": loss,
                 f"Accuracy/{stage}": accuracy,
+                f"Resources/RAM": get_ram_consumption_mb(),
             },
             prog_bar=True,
             logger=True,

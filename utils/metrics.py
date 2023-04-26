@@ -10,11 +10,11 @@ def compute_accuracy(target_tokens, tokenizer, logits_or_scores=None, tokens=Non
     assert len(target_tokens.shape) == 2, f'target_tokens should have shape (b, n)'
     assert len(tokens.shape) == 2, f'tokens should have shape (b, n)'
 
-    masked_tokens = [tokenizer.unk_token, tokenizer.pad_token]
-    mask = [x not in masked_tokens for x in target_tokens.flatten()]
+    mask = ((target_tokens != tokenizer.unk_token) & \
+        (target_tokens != tokenizer.pad_token)).flatten()
 
     target_tokens_masked = target_tokens.flatten()[mask]
-    predicted_tokens_nasked = tokens.flatten()[mask]
+    predicted_tokens_masked = tokens.flatten()[mask]
 
     if len(target_tokens_masked) < 1:
         return 0.
@@ -22,7 +22,7 @@ def compute_accuracy(target_tokens, tokenizer, logits_or_scores=None, tokens=Non
     return torch.mean(
         torch.eq(
             target_tokens_masked,
-            predicted_tokens_nasked,
+            predicted_tokens_masked,
         ).float()
     )
 
@@ -35,12 +35,14 @@ def compute_bleu_score(target_tokens, tokenizer, logits_or_scores=None, tokens=N
     assert len(target_tokens.shape) == 2, f'target_tokens should have shape (b, n)'
     assert len(tokens.shape) == 2, f'tokens should have shape (b, n)'
 
-    masked_tokens = [tokenizer.unk_token, tokenizer.pad_token]
-
     candidates_corpus, references_corpus = [], []
     for candidate, reference in zip(tokens, target_tokens):
-        candidate = [tokenizer.decode_token(x) for x in candidate if x not in masked_tokens]
-        reference = [tokenizer.decode_token(x) for x in reference if x not in masked_tokens]
+        mask = ((reference != tokenizer.unk_token) & (reference != tokenizer.pad_token))
+        masked_candidate = candidate[mask]
+        masked_reference = reference[mask]
+
+        candidate = [tokenizer.decode_token(x) for x in masked_candidate]
+        reference = [tokenizer.decode_token(x) for x in masked_reference]
 
         if tokenizer.stop_token_name in candidate:
             candidate = candidate[:candidate.index(tokenizer.stop_token_name)]

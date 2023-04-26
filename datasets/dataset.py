@@ -18,6 +18,10 @@ class ChatDataset(Dataset):
         limit: int = -1,
     ):
         df = pd.read_csv(path)
+        if limit > 0:
+            idxs = np.arange(len(df))
+            idxs = np.random.choice(idxs, limit, replace=limit > len(df))
+            df = df.iloc[idxs].reset_index(drop=True)
         self.tokenizer = tokenizer
         self.max_words = max_words
         self.in_sentences = df["question"].values
@@ -34,12 +38,6 @@ class ChatDataset(Dataset):
         self.in_sentences = self.in_sentences[mask]
         self.target_sentences = self.target_sentences[mask]
         print("Dataset size:", len(self))
-        if limit > 0:
-            idxs = np.arange(len(self.in_sentences))
-            idxs = np.random.choice(idxs, limit, replace=limit > len(self.in_sentences))
-            self.in_sentences = self.in_sentences[idxs]
-            self.target_sentences = self.target_sentences[idxs]
-            print("Limited Dataset size:", len(self))
 
     def __len__(self):
         return len(self.in_sentences)

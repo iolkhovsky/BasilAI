@@ -21,13 +21,14 @@ class InferenceModel:
         self.tokenizer: BaseTokenizer = instantiate(self.tokenizer_config)
         self.model: torch.nn.Module = instantiate(
             self.model_config,
+            num_embeddings=len(self.tokenizer),
             start_token=self.tokenizer.start_token,
             stop_token=self.tokenizer.stop_token,
         )
         checkpoint = torch.load(checkpoint_path, map_location="cpu")
         model_state_dict = {
             key.replace("model.", ""): val
-            for key, val in checkpoint["state_dict"].items()
+            for key, val in checkpoint["state_dict"].items() if "model." in key
         }
         self.model.load_state_dict(model_state_dict)
         self.model = self.model.to(self.device).eval()

@@ -30,6 +30,7 @@ class BasilAIModule(pl.LightningModule):
         self.tokenizer: BaseTokenizer = instantiate(self.tokenizer_config)
         self.model = instantiate(
             self.model_config,
+            num_embeddings=len(self.tokenizer),
             start_token=self.tokenizer.start_token,
             stop_token=self.tokenizer.stop_token,
         )
@@ -72,24 +73,19 @@ class BasilAIModule(pl.LightningModule):
 
         with torch.set_grad_enabled(train_stage):
             logits = self.model(tokens=in_tokens, dec_input=dec_inputs)
-
-            b, n, c = logits.shape
-            logits_reshaped = torch.reshape(logits, [b * n, -1])
-            targets_reshaped = torch.reshape(dec_targets, [b * n]).long()
-
+            logits_reshaped = logits.flatten(0, -2)
+            targets_reshaped = dec_targets.flatten(0, -1)
             loss = self.criterion(logits=logits_reshaped, targets=targets_reshaped)
 
         with torch.no_grad():
-            target_tokens = dec_targets.long()
-
             accuracy = compute_accuracy(
-                target_tokens=target_tokens,
+                target_tokens=dec_targets,
                 tokenizer=self.tokenizer,
                 logits_or_scores=logits,
             )
 
             bleu = compute_bleu_score(
-                target_tokens=target_tokens,
+                target_tokens=dec_targets,
                 tokenizer=self.tokenizer,
                 logits_or_scores=logits,
             )
@@ -116,20 +112,20 @@ class BasilAIModule(pl.LightningModule):
     def validation_step(self, batch: Dict[str, Any], batch_idx: int) -> None:
         _ = self.__step(batch, batch_idx, stage="valid")
 
-        in_tokens = batch["encoder_input"]
-        text_input = batch["in_sentence"]
-        target_output = batch["target_sentence"]
-
-        with torch.no_grad():
-            tokens = self.model(tokens=in_tokens).clone().detach().cpu()
-            val_result = ""
-            for sample_idx in range(len(in_tokens)):
-                prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).replace("PAD", " ")
-                val_result += (
-                    f"Sample #{sample_idx}:\n\ninput: {text_input[sample_idx]}\n\npredicted: "
-                    f"{prediction}\n\ntarget: {target_output[sample_idx]}\n\n"
-                )
-            if len(val_result):
-                self.logger.experiment.add_text(
-                    f"Samples", val_result, global_step=self.global_step
-                )
+        if batch_idx == 0:
+            in_tokens = batch["encoder_input"]
+            text_input = batch["in_sentence"]
+            target_output = batch["target_sentence"]
+            with torch.no_grad():
+                tokens = self.model(tokens=in_tokens).clone().detach().cpu()
+                val_result = ""
+                for sample_idx in range(max(len(in_tokens), 16)):
+                    prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).replace("PAD", " ")
+                    val_result += (
+                        f"Sample #{sample_idx}:\n\ninput: {text_input[sample_idx]}\n\npredicted: "
+                        f"{prediction}\n\ntarget: {target_output[sample_idx]}\n\n"
+                    )
+                if len(val_result):
+                    self.logger.experiment.add_text(
+                        f"Samples/valid", val_result, global_step=self.current_epoch
+                    )

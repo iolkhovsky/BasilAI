@@ -23,7 +23,15 @@ class BaseTokenizer(ABC):
         pass
 
     @abstractmethod
+    def encode_word(self, word: str) -> int:
+        pass
+
+    @abstractmethod
     def decode(self, tokens: List[Any]) -> str:
+        pass
+
+    @abstractmethod
+    def decode_token(self, token: int) -> str:
         pass
 
     @abstractmethod

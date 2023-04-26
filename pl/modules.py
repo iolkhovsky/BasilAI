@@ -2,9 +2,10 @@ from typing import Any, Dict, Optional, Sequence, Union
 
 import lightning as pl
 import torch
+import torchtext
 
 from tokenizers import BaseTokenizer
-from utils import instantiate
+from utils import instantiate, compute_accuracy, compute_bleu_score
 
 
 class BasilAIModule(pl.LightningModule):
@@ -77,18 +78,23 @@ class BasilAIModule(pl.LightningModule):
             loss = self.criterion(logits=logits_reshaped, targets=targets_reshaped)
 
         with torch.no_grad():
-            predictions = torch.argmax(logits_reshaped, dim=-1)
-            mask = (targets_reshaped == self.tokenizer.unk_token) | (
-                targets_reshaped == self.tokenizer.pad_token
+            accuracy = compute_accuracy(
+                target_tokens=dec_targets,
+                tokenizer=self.tokenizer,
+                logits_or_scores=logits,
             )
-            accuracy = torch.mean(
-                torch.eq(predictions[mask], targets_reshaped[mask]).float()
+
+            bleu = compute_bleu_score(
+                target_tokens=dec_targets,
+                tokenizer=self.tokenizer,
+                logits_or_scores=logits,
             )
 
         self.log_dict(
             {
                 f"Loss/{stage}": loss,
                 f"Accuracy/{stage}": accuracy,
+                f"BLEU/{stage}": bleu,
             },
             prog_bar=True,
             logger=True,

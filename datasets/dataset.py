@@ -1,8 +1,9 @@
 from typing import Optional
-
+import numpy as np
 import pandas as pd
 import torch
 from torch.utils.data import Dataset
+from tqdm import tqdm
 
 from tokenizers import BaseTokenizer
 from utils import pad
@@ -14,42 +15,64 @@ class ChatDataset(Dataset):
         path: str,
         tokenizer: BaseTokenizer,
         max_words: int = 60,
-        limit: Optional[int] = None,
+        limit: int = -1,
     ):
+        df = pd.read_csv(path)
         self.tokenizer = tokenizer
-        self._max_words = max_words
-        self._df = pd.read_csv(path)
-        if limit:
-            self._df = self._df.head(limit)
+        self.max_words = max_words
+        self.in_sentences = df["question"].values
+        self.target_sentences = df["answer"].values
+        enc_in_sentences_mask = np.array([
+            0 < len(self.tokenizer.encode(val)) < self.max_words - 2
+            for val in tqdm(self.in_sentences, desc="enc_in_sentences_mask")
+        ])
+        enc_target_sentences_mask = np.array([
+            0 < len(self.tokenizer.encode(val)) < self.max_words - 2
+            for val in tqdm(self.target_sentences, desc="enc_target_sentences_mask")
+        ])
+        mask = enc_in_sentences_mask & enc_target_sentences_mask
+        self.in_sentences = self.in_sentences[mask]
+        self.target_sentences = self.target_sentences[mask]
+        print("Dataset size:", len(self))
+        if limit > 0:
+            idxs = np.arange(len(self.in_sentences))
+            idxs = np.random.choice(idxs, limit, replace=limit > len(self.in_sentences))
+            self.in_sentences = self.in_sentences[idxs]
+            self.target_sentences = self.target_sentences[idxs]
+            print("Limited Dataset size:", len(self))
 
     def __len__(self):
-        return len(self._df)
+        return len(self.in_sentences)
 
     def __getitem__(self, index):
-        in_sentence = self._df["question"][index]
-        encoder_input = self.tokenizer.encode(in_sentence)[: self._max_words]
-        encoder_input = pad(
-            encoder_input, self.tokenizer, self._max_words, prepadding=True
+        in_sentence = self.in_sentences[index]
+        target_sentence = self.target_sentences[index]
+        enc_in_sentence = self.tokenizer.encode(in_sentence)
+        enc_target_sentence = self.tokenizer.encode(target_sentence)
+        encoder_input = torch.tensor(
+            pad(enc_in_sentence, self.tokenizer, self.max_words, prepadding=True),
+            dtype=torch.long
         )
-
-        target_sentence = self._df["answer"][index]
-        decoder_output = self.tokenizer.encode(target_sentence) + [
-            self.tokenizer.stop_token
-        ]
-        decoder_output = decoder_output[: self._max_words]
-        decoder_input = [self.tokenizer.start_token] + decoder_output
-        decoder_input = decoder_input[: self._max_words]
-        decoder_output = pad(decoder_output, self.tokenizer, self._max_words)
-        decoder_input = pad(decoder_input, self.tokenizer, self._max_words)
-
-        assert len(encoder_input) == self._max_words
-        assert len(decoder_input) == self._max_words
-        assert len(decoder_output) == self._max_words
-
+        decoder_input = torch.tensor(
+            pad(
+                [self.tokenizer.start_token] + enc_target_sentence + [self.tokenizer.stop_token],
+                self.tokenizer,
+                self.max_words
+            ),
+            dtype=torch.long
+        )
+        decoder_output = torch.tensor(
+            pad(
+                enc_target_sentence + [self.tokenizer.stop_token],
+                self.tokenizer,
+                self.max_words
+            ),
+            dtype=torch.long
+        )
         return {
             "in_sentence": in_sentence,
             "target_sentence": target_sentence,
-            "encoder_input": torch.tensor(encoder_input, dtype=torch.long),
-            "decoder_input": torch.tensor(decoder_input, dtype=torch.long),
-            "decoder_output": torch.tensor(decoder_output, dtype=torch.long),
+            "encoder_input": encoder_input,
+            "decoder_input": decoder_input,
+            "decoder_output": decoder_output,
         }

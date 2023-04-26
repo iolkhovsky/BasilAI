@@ -2,9 +2,11 @@ import argparse
 import os
 
 import lightning as pl
-from lightning.pytorch.callbacks import ModelCheckpoint
+from lightning.pytorch.callbacks import ModelCheckpoint, LearningRateMonitor
 from lightning.pytorch.loggers import TensorBoardLogger
 from lightning.pytorch.profilers import SimpleProfiler
+
+from lightning.pytorch import seed_everything
 
 from pl import BasilAIDataModule, BasilAIModule
 from utils import read_yaml
@@ -21,6 +23,7 @@ def parse_cmd_args():
 
 
 def train_pl(config):
+    seed_everything(42, workers=True)
     trainer_config = config.get("trainer", None)
     if trainer_config is None:
         raise ValueError(f"There is no 'trainer' configuration:\n{config}")
@@ -39,9 +42,10 @@ def train_pl(config):
             save_top_k=3,
             mode="max",
             auto_insert_metric_name=False,
-        )
+        ),
+        LearningRateMonitor()
     ]
-    profiler = SimpleProfiler(log_dir, filename="profiler_report")
+    profiler = SimpleProfiler(filename="profiler_report")
     trainer = pl.Trainer(
         accelerator=device,
         strategy="auto",
@@ -64,7 +68,7 @@ def train_pl(config):
         val_check_interval=None,
         check_val_every_n_epoch=1,
         num_sanity_val_steps=None,
-        log_every_n_steps=10,
+        log_every_n_steps=50,
         enable_checkpointing=None,
         enable_progress_bar=True,
         enable_model_summary=True,
@@ -76,7 +80,7 @@ def train_pl(config):
         inference_mode=True,
         use_distributed_sampler=True,
         profiler=profiler,
-        detect_anomaly=True,
+        detect_anomaly=False,
         barebones=False,
         plugins=None,
         sync_batchnorm=False,

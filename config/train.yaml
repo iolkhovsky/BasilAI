@@ -6,8 +6,7 @@ trainer:
 model:
   class: models.BasicLstmChatter
   parameters:
-    max_length: 60
-    num_embeddings: 10000
+    max_length: 100
     layers: 2
     do: 0.5
     hidden_size: 256
@@ -20,19 +19,16 @@ optimizer:
 tokenizer:
   class: tokenizers.SimpleTokenizer
   parameters:
-    path: "data/vocab.json"
-    max_words: 10000
-    fit: False
-    fit_dataset_path: "data/dataset.csv"
+    path: "data/tokenizers/tokenizer_2/vocab.json"
 dataset:
   class: datasets.ChatDataset
   parameters:
-    path: "data/dataset.csv"
-    max_words: 60
-    limit: 0
-  valid_share: 0.05
+    path: "data/datasets/dataset_2/dataset.csv"
+    max_words: 100
+    limit: -1
+  valid_share: 0.01
   train_batch: 64
-  valid_batch: 16
+  valid_batch: 64
   num_workers: 4
 criterion:
   class: criterions.MaskedCrossEntropy

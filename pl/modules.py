@@ -5,7 +5,7 @@ import torch
 import torchtext
 
 from tokenizers import BaseTokenizer
-from utils import instantiate, compute_accuracy, compute_bleu_score
+from utils import instantiate, get_ram_consumption_mb, compute_accuracy, compute_bleu_score
 
 
 class BasilAIModule(pl.LightningModule):
@@ -94,6 +94,7 @@ class BasilAIModule(pl.LightningModule):
             {
                 f"Loss/{stage}": loss,
                 f"Accuracy/{stage}": accuracy,
+                f"Resources/RAM": get_ram_consumption_mb(),
                 f"BLEU/{stage}": bleu,
             },
             prog_bar=True,

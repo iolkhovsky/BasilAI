@@ -31,6 +31,7 @@ def train_pl(config):
     log_dir = trainer_config.get("logs", "logs")
     experiment = trainer_config.get("experiment", "experiment")
     epochs = trainer_config.get("epochs", 250)
+    val_check_interval = trainer_config.get("val_check_interval", None)
     logger = TensorBoardLogger(save_dir=log_dir, name=experiment)
     callbacks = [
         ModelCheckpoint(
@@ -65,7 +66,7 @@ def train_pl(config):
         limit_test_batches=None,
         limit_predict_batches=None,
         overfit_batches=0.0,
-        val_check_interval=None,
+        val_check_interval=val_check_interval,
         check_val_every_n_epoch=1,
         num_sanity_val_steps=None,
         log_every_n_steps=50,

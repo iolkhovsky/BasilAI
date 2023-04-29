@@ -45,9 +45,7 @@ class BasicLstmChatter(nn.Module):
             logits, _ = self._decoder(dec_input, context)
             return logits
         else:
-            b, n = tokens.shape
-            context = self._encoder(tokens)
-
+            b, _ = tokens.shape
             res_tokens = []
 
             in_token = self.start_token.unsqueeze(0).unsqueeze(0).expand(b, 1)

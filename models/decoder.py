@@ -50,6 +50,7 @@ class AttnDecoder(nn.Module):
         self.embedding = nn.Embedding(
             num_embeddings=num_embeddings, embedding_dim=embedding_dim, max_norm=True
         )
+        self.combine_hiddens = nn.Linear(hidden_size * 2, hidden_size)
         self._dec_lstm = nn.LSTM(
             input_size=embedding_dim,
             hidden_size=hidden_size,
@@ -74,8 +75,12 @@ class AttnDecoder(nn.Module):
         dec_in_h = context["hidden"]
         dec_in_c = context["context"]
         encoder_outputs = context["encoder_output"]
+        attention_context = context.get("attention_context", None)
 
         embeddings = self.embedding(tokens)
+        if attention_context is not None:
+            attention_context = attention_context.transpose(0, 1).repeat(dec_in_h.shape[0], 1, 1).contiguous()
+            dec_in_h = self.combine_hiddens(torch.cat([attention_context, dec_in_h], dim=-1))
         dec_out, (dec_h, dec_c) = self._dec_lstm(embeddings, (dec_in_h, dec_in_c))
 
         attention_context, attention_weights = self._attention(
@@ -95,5 +100,6 @@ class AttnDecoder(nn.Module):
                 "context": dec_c,
                 "encoder_output": encoder_outputs,
                 "attention": attention_weights,
+                "attention_context": attention_context,
             },
         )

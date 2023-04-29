@@ -1,8 +1,8 @@
 from typing import Any, Dict, Optional, Sequence, Union
 
+import os
 import lightning as pl
 import torch
-import torchtext
 import torchvision
 
 from tokenizers import BaseTokenizer
@@ -37,6 +37,14 @@ class BasilAIModule(pl.LightningModule):
             start_token=self.tokenizer.start_token,
             stop_token=self.tokenizer.stop_token,
         )
+        checkpoint_path = config.get("checkpoint", None)
+        if checkpoint_path is not None and os.path.isfile(checkpoint_path):
+            checkpoint = torch.load(checkpoint_path, map_location="cpu")
+            model_state_dict = {
+                key.replace("model.", ""): val
+                for key, val in checkpoint["state_dict"].items() if "model." in key
+            }
+            self.model.load_state_dict(model_state_dict)
         self._log_attention = self.model_config['parameters'].get('use_attention', False)
         self.train_batch_size: Optional[int] = self.dataset_config.get(
             "train_batch", None
@@ -99,7 +107,6 @@ class BasilAIModule(pl.LightningModule):
             {
                 f"Loss/{stage}": loss,
                 f"Accuracy/{stage}": accuracy,
-                f"Resources/RAM": get_ram_consumption_mb(),
                 f"BLEU/{stage}": bleu,
                 f"Resources/RAM": get_ram_consumption_mb(),
             },
@@ -141,8 +148,8 @@ class BasilAIModule(pl.LightningModule):
                     )
 
                 val_result = ""
-                for sample_idx in range(max(len(in_tokens), 16)):
-                    prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).replace("PAD", " ")
+                for sample_idx in range(min(len(in_tokens), 16)):
+                    prediction = self.tokenizer.decode(tokens[sample_idx].tolist()).split("STOP", 1)[0].replace("PAD", "").replace("STOP", "")
                     val_result += (
                         f"Sample #{sample_idx}:\n\ninput: {text_input[sample_idx]}\n\npredicted: "
                         f"{prediction}\n\ntarget: {target_output[sample_idx]}\n\n"

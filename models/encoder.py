@@ -19,8 +19,9 @@ class Encoder(nn.Module):
 
     def forward(self, tokens):
         embedded = self.embedding(tokens)
-        _, (enc_h, enc_c) = self._enc_lstm(embedded)
+        enc_output, (enc_h, enc_c) = self._enc_lstm(embedded)
         return {
             "hidden": enc_h,
             "context": enc_c,
+            "encoder_output": enc_output,
         }

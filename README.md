@@ -20,6 +20,27 @@
 make dataset RAW_DATA=<path to telegram dialogs dump json> TARGET=<user_id> DATASET=<path to csv file to save generated dataset>
 ```
 
+## Generate advanced dataset
+
+```bash
+make dataset_advanced \
+  USER_ID=<user id> \
+  RAW_DATASET=<path to raw json dialog file> \
+  DIALOG_SECONDS_COOLDOWN=<minimum time distance in seconds between different dialogs> \
+  DIALOG_MEMORY=<message number in memory to answer> \
+  DAATSET_OUTPUT=<path to save generated dataset folder>
+```
+
+## Fit tokenizer
+
+```bash
+make fit_tokenizer \
+  TOKENIZER_DATASET=<path to the dataset> \
+  TOKENIZER=<tokenizer class> \
+  TOKENIZER_SIZE=<tokenizer vocab size> \
+  TOKENIZER_OUTPUT=<path to save tokenizer>
+```
+
 ## Train model
 
 ```bash

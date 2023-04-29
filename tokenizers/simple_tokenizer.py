@@ -4,7 +4,6 @@ import re
 from collections import defaultdict
 from typing import Dict, List, Optional, Union
 
-import pandas as pd
 from tqdm import tqdm
 
 from tokenizers.base_tokenizer import BaseTokenizer
@@ -13,22 +12,14 @@ from tokenizers.base_tokenizer import BaseTokenizer
 class SimpleTokenizer(BaseTokenizer):
     def __init__(
         self,
-        path: str,
+        path: str = "",
         max_words: int = 10000,
-        fit: bool = False,
-        fit_dataset_path: str = None,
     ) -> None:
         super().__init__()
         self._word2id: Optional[Dict[str, int]] = None
         self._id2word: Optional[Dict[int, str]] = None
         self._max_words = max_words
-        if fit and fit_dataset_path is not None:
-            df = pd.read_csv(fit_dataset_path)
-            all_sentences = list(df["answer"]) + list(df["question"])
-            self.fit(all_sentences)
-            self.save(path)
-        else:
-            self.load(path)
+        self.load(path)
 
     def encode(self, text: str) -> List[int]:
         words = [
@@ -39,10 +30,16 @@ class SimpleTokenizer(BaseTokenizer):
         tokens = [self._word2id.get(word, self.unk_token) for word in words if word]
         return tokens
 
+    def encode_word(self, word: str) -> int:
+        return self._word2id.get(self.preprocessor(word), self.unk_token)
+
     def decode(self, tokens: List[int]) -> str:
         tokens = [int(token) for token in tokens]
-        words = [self._id2word.get(int(token), self.unk_token_name) for token in tokens]
+        words = [self.decode_token(token) for token in tokens]
         return " ".join(words)
+
+    def decode_token(self, token: int) -> str:
+        return self._id2word.get(int(token), self.unk_token_name)
 
     def fit(
         self,

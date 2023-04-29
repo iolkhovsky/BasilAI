@@ -26,9 +26,10 @@ def plot_attention_scores(input_words, output_words, scores, figsize=(4, 4), dpi
 
     plt.tight_layout(pad=0.5, w_pad=0.5, h_pad=1.0)
 
-    image = None
     with tempfile.NamedTemporaryFile(suffix='.png', delete=True) as temp_file:
         fig.savefig(temp_file.name)
-        image = plt.imread(temp_file.name)[:,:,:3]
+        image = plt.imread(temp_file.name)[:, :, :3]
+
+    plt.close(fig)
     
     return image

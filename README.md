@@ -28,7 +28,7 @@ make dataset_advanced \
   RAW_DATASET=<path to raw json dialog file> \
   DIALOG_SECONDS_COOLDOWN=<minimum time distance in seconds between different dialogs> \
   DIALOG_MEMORY=<message number in memory to answer> \
-  DAATSET_OUTPUT=<path to save generated dataset folder>
+  DATASET_OUTPUT=<path to save generated dataset folder>
 ```
 
 ## Fit tokenizer
